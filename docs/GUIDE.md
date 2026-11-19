@@ -89,6 +89,14 @@
 Собери факты и **покажи их пользователю**:
 
 ```bash
+python3 scripts/audit_pack.py <инстанс>          # всё сразу: версии, объём, риски
+python3 scripts/audit_pack.py <инстанс> -o work/RECON.md --json work/recon.json
+```
+
+Скрипт читает только файлы, ничего не меняет, и сразу делит найденное на то,
+что можно переводить, и на то, что сломается. Если нужно вручную:
+
+```bash
 cd <инстанс>
 ls mods/*.jar | wc -l                          # сколько модов
 ls config/                                     # какие моды с конфигами
@@ -108,6 +116,7 @@ grep -o '"file/[^"]*"' options.txt | tail -5    # порядок паков
 | Книги в данжах | `datapacks/`, `saves/*/datapacks/`, лут-таблицы в jar | ищем `.json` с текстом |
 | Скрипты KubeJS | `kubejs/**/*.js` | строки в UI |
 | Свои ru_ru у модов | `assets/<ns>/lang/ru_ru.json` внутри jar | не переопределять вычитку мода |
+| Захардкоженный текст | `ru_ru` есть, а UI английский | см. `HARDCODED.md`, разбор через `dump_hardcoded.py` |
 
 ---
 
@@ -322,11 +331,14 @@ lang-файлы и квесты, не зная формата конкретно
 
 | Скрипт | Для чего |
 |---|---|
+| `audit_pack.py` | **разведка одной командой**: версии, объём по слоям, что уже переведено, шифрование квестов, книги, порядок паков, риски |
+| `check_translation.py` | **валидатор перевода**: плейсхолдеры, `§`-коды, токены, пунктуация, регистр, непереведённое. `error` / `warn` / `info` |
+| `dump_hardcoded.py` | разбор мода на захардкоженный текст (constant pool + `javap` для подсчёта вызовов) |
 | `lang_json.py` | терпимое чтение lang-файлов (BOM, комментарии, висячие запятые) |
 | `snbt_text.py` | разбор и подстановка текстовых полей в SNBT квестов |
 | `brands.py` | маскирование и восстановление брендов (список — свой) |
 | `deepl_backend.py` | бэкенд DeepL (ключ из `.deepl_keys` рядом со скриптом) |
-| `deepseek_backend.py` | бэкенд DeepSeek/OpenAI-совместимого API |
+| `deepseek_backend.py` | бэкенд DeepSeek/OpenAI-совместимого API; правила читает из `prompts/SYSTEM_PROMPT_EN_RU.txt` |
 | `build_tooltip_script.py` | сборка KubeJS-переводчика подсказок |
 | `collect_text_png.py` | поиск PNG с английским текстом + галерея (`root out`) |
 | `audit_font_coverage.py` | символы без глифа в шрифте игры |
@@ -334,6 +346,16 @@ lang-файлы и квесты, не зная формата конкретно
 В `reference/lingtango/` — образец целого конвейера под конкретную сборку
 (сборка ресурспака, шифрование квестов, приёмка). **Перепиши под свою сборку**,
 не копируй как есть.
+
+В `prompts/` — промты под каждый режим работы:
+
+| Файл | Когда |
+|---|---|
+| `SYSTEM_PROMPT_EN_RU.txt` | перевод строк; единственный источник правил, `deepseek_backend.py` читает его из файла |
+| `AUDIT_PROMPT.txt` | найти брак в готовом переводе (непереведённое, сломанная подстановка, калька, термины) |
+| `PROOFREAD_PROMPT.txt` | вычитка стиля: канцелярит, порядок слов, род, повторы |
+| `RECON_PROMPT.txt` | разведка сборки до начала перевода |
+| `ASK_MAINTAINER.txt` | письмо автору мода, чтобы UI стал переводимым |
 
 Системные утилиты, которые безопасны:
 
@@ -362,6 +384,7 @@ javap -c -p ModClass.class | grep -oE 'String [^ ]+'
 - [ ] `assets/minecraft/lang/ru_ru.json` — полный официальный файл
 - [ ] квесты читаются в игре, id/координаты/иконки не изменились
 - [ ] плейсхолдеры: 0 несовпадений
+- [ ] `check_translation.py` на итоговом словаре/паке: **0 блокеров** (предупреждения — смотреть глазами)
 - [ ] ZWNJ (если есть): ни одного нарушения правила «слово + ZWNJ + один пробел»
 - [ ] §-коды и hex-цвета сохранились, порядок не нарушен
 - [ ] новых/изменённых jar в `mods/` нет (кроме датапака-jar, если он нужен)
@@ -375,6 +398,7 @@ javap -c -p ModClass.class | grep -oE 'String [^ ]+'
 
 ```bash
 # разведка
+python3 scripts/audit_pack.py <инстанс>          # всё сразу + риски
 ls mods/*.jar | wc -l; ls config/; ls resourcepacks/
 grep -o '"file/[^"]*"' options.txt | tail -5
 
@@ -384,6 +408,9 @@ curl -sO https://resources.download.minecraft.net/v1_20_1/assets/minecraft/lang/
 # поиск английских строк в class-файлах
 javap -c -p <Class>.class | grep -oE 'String [^ ]+'
 
+# захардкоженный текст: разбор мода и оценка объёма
+python3 scripts/dump_hardcoded.py mods/<мод>.jar -o HARDCODED.md
+
 # OCR по PNG
 tesseract file.png stdout -l eng --psm 11
 
@@ -392,6 +419,11 @@ python3 scripts/collect_text_png.py <инстанс> ./png-scan
 
 # символы без глифа в шрифте
 python3 scripts/audit_font_coverage.py <инстанс> --font-json <путь к include/default.json>
+
+# проверка перевода до сборки
+python3 scripts/check_translation.py work/mods_ru.json            # блокеры
+python3 scripts/check_translation.py work/mods_ru.json --all      # + стилистика
+python3 scripts/check_translation.py pack.zip --mods mods/        # по готовому паку
 
 # сборка и проверка ресурспака
 python3 build_resourcepack.py
@@ -412,13 +444,17 @@ python3 -c "import zipfile; print(zipfile.ZipFile('pack.zip').testzip())"
 5. Запустить игру, снять остатки (§5.1) — **после** установки паков.
 6. Классифицировать: что переводим, что нет.
 7. Перевести остатки пачками: маскирование → термины → движок → валидация.
-8. Собрать ресурспак/датапак/скрипт, проверить по §10, отдать результат.
+8. Прогнать `check_translation.py`: блокеры починить, предупреждения просмотреть.
+9. Собрать ресурспак/датапак/скрипт, проверить по §10, отдать результат.
 
 ---
 
 ## Связанные документы
 
 - `TRAPS.md` — **грабли**, на которые реально наступают. Читай перед сборкой.
+- `HARDCODED.md` — мод не переводится, хотя `ru_ru.json` есть: как доказать и что делать.
 - `UPGRADES.md` — что переживёт обновление сборки, а что сломается.
 - `../prompts/SYSTEM_PROMPT_EN_RU.txt` — системный промт переводчика.
+- `../prompts/AUDIT_PROMPT.txt`, `../prompts/PROOFREAD_PROMPT.txt` — аудит и вычитка.
+- `../prompts/RECON_PROMPT.txt`, `../prompts/ASK_MAINTAINER.txt` — разведка и письмо автору.
 - `../reference/lingtango/` — образец готового конвейера.
