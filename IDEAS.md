@@ -17,7 +17,6 @@
 - **`prompts/AUDIT_PROMPT.txt`** — промт аудита готового перевода (а не перевода).
 - **`prompts/PROOFREAD_PROMPT.txt`** — промт вычитки стиля.
 - **`prompts/RECON_PROMPT.txt`** — промт разведки сборки.
-- **`prompts/ASK_MAINTAINER.txt`** — письмо автору мода о переводимости UI.
 - **`docs/HARDCODED.md` + `scripts/dump_hardcoded.py`** — разбор мода на
   захардкоженный текст и оценка объёма работ.
 - Системный промт вынесен из кода в файл: `deepseek_backend.py` читает

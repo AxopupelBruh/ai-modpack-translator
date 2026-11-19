@@ -355,7 +355,6 @@ lang-файлы и квесты, не зная формата конкретно
 | `AUDIT_PROMPT.txt` | найти брак в готовом переводе (непереведённое, сломанная подстановка, калька, термины) |
 | `PROOFREAD_PROMPT.txt` | вычитка стиля: канцелярит, порядок слов, род, повторы |
 | `RECON_PROMPT.txt` | разведка сборки до начала перевода |
-| `ASK_MAINTAINER.txt` | письмо автору мода, чтобы UI стал переводимым |
 
 Системные утилиты, которые безопасны:
 
@@ -456,5 +455,5 @@ python3 -c "import zipfile; print(zipfile.ZipFile('pack.zip').testzip())"
 - `UPGRADES.md` — что переживёт обновление сборки, а что сломается.
 - `../prompts/SYSTEM_PROMPT_EN_RU.txt` — системный промт переводчика.
 - `../prompts/AUDIT_PROMPT.txt`, `../prompts/PROOFREAD_PROMPT.txt` — аудит и вычитка.
-- `../prompts/RECON_PROMPT.txt`, `../prompts/ASK_MAINTAINER.txt` — разведка и письмо автору.
+- `../prompts/RECON_PROMPT.txt` — разведка сборки.
 - `../reference/lingtango/` — образец готового конвейера.
