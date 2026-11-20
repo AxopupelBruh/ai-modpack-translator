@@ -1,0 +1,4 @@
+# Создаются по ходу работы — в git не нужны
+glossary_provenance.json
+glossary_rejected.json
+uncertain_pending.json
