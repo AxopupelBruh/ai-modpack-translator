@@ -32,11 +32,15 @@ python3 scripts/collect_text_png.py <инстанс> ./png-scan   # картин
 python3 scripts/audit_font_coverage.py <инстанс> --font-json <include/default.json>
 
 # 3. перевести (промт — в prompts/, бэкенды — в scripts/)
-# 4. проверить перевод до сборки — блокеры видны сразу
+python3 scripts/translate_by_role.py work/pairs.json -o work/mods_ru.json
+# 4. дешёвые фильтры до аудита
+python3 scripts/lint_calc.py work/mods_ru.json --fix             # кальки без модели
+python3 scripts/back_translate.py work/pairs.json                # механика: числа, знак, отрицание
+# 5. проверить перевод до сборки — блокеры видны сразу
 python3 scripts/check_translation.py work/mods_ru.json
 python3 scripts/check_translation.py work/mods_ru.json --all      # + стилистика
 
-# 5. собрать и проверить
+# 6. собрать и проверить
 python3 build_resourcepack.py
 python3 verify_all.py
 ```
@@ -88,7 +92,8 @@ python3 scripts/dump_hardcoded.py mods/<мод>.jar -o HARDCODED.md
 | [`prompts/AUDIT_PROMPT.txt`](prompts/AUDIT_PROMPT.txt) | Промт аудита: найти брак в готовом переводе — непереведённое, сломанную подстановку, кальку, разъехавшиеся термины |
 | [`prompts/PROOFREAD_PROMPT.txt`](prompts/PROOFREAD_PROMPT.txt) | Промт вычитки: сделать русский естественным, не меняя смысл (канцелярит, порядок слов, род, повторы) |
 | [`prompts/RECON_PROMPT.txt`](prompts/RECON_PROMPT.txt) | Промт разведки: собрать факты о сборке и сразу подсветить риски, до начала перевода |
-| `scripts/` | Переносимые куски: разведка сборки, валидатор перевода, разбор захардкоженного текста, парсеры lang/SNBT, маскирование брендов, бэкенды DeepL и DeepSeek, сборщик KubeJS-переводчика, поиск картинок с текстом, аудит глифов |
+| `scripts/` | Переносимые куски: разведка сборки, валидатор перевода, разбор захардкоженного текста, парсеры lang/SNBT, маскирование брендов, бэкенды DeepL и DeepSeek, сборщик KubeJS-переводчика, поиск картинок с текстом, аудит глифов, роли строк и батчи по роли, линтер калек, обратный перевод, карантин глоссария |
+| `data/` | Рабочие словари, которые создают скрипты: `glossary.json` (активный), `glossary_candidates.json` (карантин), `adaptation_examples.json` (решения по шуткам) |
 | `reference/lingtango/` | Образец целого конвейера на реальной сборке: сборка ресурспака, шифрование квестов, приёмка. **Перепиши под свою сборку** |
 | `templates/` | Заготовки для публикации своего перевода: README-шаблон, `.gitignore`, сборщик релиза |
 | [`IDEAS.md`](IDEAS.md) | Что добавить дальше — от веб-редактора терминов до CI |
@@ -112,7 +117,7 @@ python3 scripts/dump_hardcoded.py mods/<мод>.jar -o HARDCODED.md
 
 ## Промт переводчика — что внутри
 
-`prompts/SYSTEM_PROMPT_EN_RU.txt` (335 строк) — единственный источник правил:
+`prompts/SYSTEM_PROMPT_EN_RU.txt` (397 строк) — единственный источник правил:
 `scripts/deepseek_backend.py` читает его из файла, копии в коде больше нет.
 
 - **§0 — официальный русский перевод Minecraft** как источник истины:
@@ -129,10 +134,18 @@ python3 scripts/dump_hardcoded.py mods/<мод>.jar -o HARDCODED.md
 - **§6 — §-коды, плейсхолдеры, единицы** не трогать, числа с точкой;
 - **§8 — что не переводить**: бренды (FTB, JEI, Create, Mekanism, Ars Nouveau),
   id, значения конфигов (`toggle,hold,lite`), ники авторов, названия треков;
+- **§9.1 — консистентность внутри запроса**: один термин в разных строках пачки
+  переводится одинаково;
+- **§9.2 — кандидаты в глоссарий**: модель может предложить термин, но он идёт
+  в карантин, а не в активный глоссарий;
+- **§9.3 — сомнительные строки**: шутки и идиомы возвращаются отдельным полем
+  на ручную адаптацию;
 - **§12 — самопроверка** перед выдачей ответа.
 
 К промту прилагаются три режима работы: аудит (`AUDIT_PROMPT.txt`), вычитка
-(`PROOFREAD_PROMPT.txt`) и разведка (`RECON_PROMPT.txt`).
+(`PROOFREAD_PROMPT.txt`) и разведка (`RECON_PROMPT.txt`). У каждого промта
+в первых трёх строках шапка `# PROMPT_NAME / # STAGE / # INPUT` — чтобы файлы
+не путались, когда агент читает их пачкой.
 
 ---
 

@@ -166,5 +166,36 @@ for name in ("mods_ru.json", "ui_strings_ru.json", "pack_script_ru.json",
     else:
         print(f"  {name}: нет")
 
+head("6. один EN — один RU (кэш не разошёлся сам с собой)")
+# Если одна и та же английская строка переведена по-разному в разных слоях,
+# значит кэш разошёлся: два батча перевели её независимо. В игре это выглядит
+# как «один и тот же предмет назван по-разному в тултипе и в JEI».
+# Сравниваем по всем словарям сразу: пары «en -> ru» собираются в один индекс.
+by_en: dict[str, dict[str, list[str]]] = {}
+for name in ("mods_ru.json", "ui_strings_ru.json", "pack_script_ru.json",
+             "quests_ru.json", "patchouli_ru.json"):
+    p = WORK / name
+    if not p.exists():
+        continue
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        continue
+    if not isinstance(d, dict):
+        continue
+    for en, ru in d.items():
+        if not isinstance(en, str) or not isinstance(ru, str) or not ru.strip():
+            continue
+        by_en.setdefault(en, {}).setdefault(ru, []).append(name)
+
+conflicts = {en: v for en, v in by_en.items() if len(v) > 1}
+check(not conflicts, f"расхождений «один EN — разный RU»: {len(conflicts)}")
+if conflicts:
+    for en, variants in list(conflicts.items())[:8]:
+        print(f"     EN: {en[:70]!r}")
+        for ru, where in variants.items():
+            print(f"       → {ru[:60]!r}  ({', '.join(sorted(set(where)))})")
+    print("     решить: какой вариант оставить, и починить кэш/словари вручную")
+
 print("\n" + ("ВСЁ ОК" if ok else "ЕСТЬ ПРОБЛЕМЫ"))
 raise SystemExit(0 if ok else 1)
