@@ -295,3 +295,60 @@ class DeepSeekBackend:
         if chunk:
             out.extend(self._request_hinted(chunk))
         return out
+
+    # ------------------------------------------------------------------
+    # Сырой запрос: нужен вспомогательным промтам (обратный перевод, чистка)
+    # ------------------------------------------------------------------
+
+    def _request_raw(self, prompt: str, system: str | None = None,
+                     temperature: float | None = None) -> str:
+        """Отправляет произвольный промт и возвращает текст ответа как есть.
+
+        Системный промт по умолчанию — тот же, что у перевода; для проверочных
+        прогонов (обратный перевод) его надо передавать своим, иначе модель
+        тянет правила «переведи на русский» в обратную сторону.
+        """
+        body = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system if system is not None else SYSTEM_RULES},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": self.temperature if temperature is None else temperature,
+            "max_tokens": 8192,
+            "stream": False,
+        }
+        if not self.thinking:
+            body["thinking"] = {"type": "disabled"}
+        last = ""
+        for attempt in range(6):
+            try:
+                self._throttle()
+                r = self.session.post(self.base_url + "/chat/completions", json=body, timeout=300)
+                self.calls += 1
+                if r.status_code == 200:
+                    msg = r.json()["choices"][0]["message"]
+                    text = msg.get("content") or ""
+                    if not text:
+                        raise RuntimeError("deepseek: пустой content")
+                    self.input_chars += len(prompt)
+                    self.output_chars += len(text)
+                    return text
+                last = f"HTTP {r.status_code}: {r.text[:300]}"
+                if r.status_code in (400, 401, 403, 404):
+                    raise RuntimeError(f"deepseek: {last}")
+                if r.status_code in (429, 500, 502, 503, 504, 520, 521, 522, 523, 524):
+                    time.sleep(min(60, 8 * (attempt + 1)) + random.uniform(0, 3))
+                    continue
+                raise RuntimeError(f"deepseek: {last}")
+            except RuntimeError as exc:
+                last = str(exc)
+                if attempt == 5:
+                    raise
+                time.sleep(5 * (attempt + 1))
+            except Exception as exc:  # noqa: BLE001
+                last = str(exc)
+                if attempt == 5:
+                    raise RuntimeError(f"deepseek: {last}") from exc
+                time.sleep(5 * (attempt + 1))
+        raise RuntimeError(f"deepseek: {last}")

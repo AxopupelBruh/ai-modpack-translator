@@ -1,0 +1,9 @@
+# Создаются по ходу работы — в git не нужны
+glossary_candidates.json
+glossary_provenance.json
+glossary_rejected.json
+uncertain_pending.json
+
+# Активный глоссарий и решения по шуткам — часть проекта, их коммитим
+!glossary.json
+!adaptation_examples.json
