@@ -27,6 +27,32 @@ import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
 
+
+def placeholder_slots(text: str) -> tuple[Counter, bool]:
+    """Нормализует плейсхолдеры к номерам аргументов.
+
+    `%s %s` — то же самое, что `%1$s %2$s`: Java подставляет аргументы по
+    порядку. А `%2$s … %1$s` — законная перестановка слов (так делает и
+    официальная русская локализация Minecraft: `%2$s: %1$s`).
+
+    Возвращает (мультимножество номеров аргументов, была ли перестановка).
+    """
+    slots: Counter = Counter()
+    implicit = 0
+    explicit = False
+    for m in PLACEHOLDER.finditer(text):
+        idx = re.match(r"%(\d+)\$", m.group(0))
+        if idx:
+            explicit = True
+            slots[int(idx.group(1))] += 1
+        else:
+            implicit += 1
+            slots[implicit] += 1
+    # при смешивании Java требует только позиционные — это отдельная поломка,
+    # но такие строки редки и ловятся тем, что порядок номеров не совпал
+    reordered = explicit and implicit > 0
+    return slots, reordered
+
 # ─────────────────────────── что считаем нарушением ────────────────────────
 
 # %s / %d / %1$s / %.2f — но не %% и не проценты
@@ -109,7 +135,12 @@ def find_violations(en: str, ru: str, strict: bool = False) -> dict[str, list[st
     # ── 1. Плейсхолдеры: несовпадение = падение или «%s» на экране ──────────
     pe, pr = sorted(PLACEHOLDER.findall(en)), sorted(PLACEHOLDER.findall(ru))
     if pe != pr:
-        v["placeholder"].append(f"{pe} → {pr}")
+        # Сравниваем не текст, а номера аргументов: `%1$s`/`%2$s` — тот же
+        # набор, что `%s`/`%s`, только с перестановкой слов под русский порядок.
+        se_, _ = placeholder_slots(en)
+        sr_, mixed = placeholder_slots(ru)
+        if se_ != sr_ or mixed:
+            v["placeholder"].append(f"{pe} → {pr}")
     for m in CYR_PLACEHOLDER.finditer(ru):
         v["placeholder_cyr"].append(f"{m.group(0)!r} набрано кириллицей")
     # Плейсхолдеры вида {0}/{name} — несовпадение ломает подстановку.
