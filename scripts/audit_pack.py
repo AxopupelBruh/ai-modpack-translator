@@ -5,7 +5,7 @@
 шифрование квестов, книги Patchouli, датапаки, порядок паков — и сразу
 подсвечивает риски.
 
-    python3 audit_pack.py ~/Documents/curseforge/minecraft/Instances/Linggango
+    python3 audit_pack.py ~/путь/к/инстансу/сборки
     python3 audit_pack.py <инстанс> --json work/recon.json
     python3 audit_pack.py <инстанс> --no-ocr        # без tesseract, быстрее
 
@@ -223,8 +223,11 @@ def packs_info(root: Path) -> dict:
             enabled = re.findall(r'"file/([^"]+)"', m.group(1))
     # свой конфиг порядка паков
     order_cfg = {}
-    for cand in (root / "config" / "linggango-resourcepacks.toml",
-                 root / "config" / "resourcepackoverrides.toml"):
+    cfg_dir = root / "config"
+    candidates = [cfg_dir / "resourcepackoverrides.toml"]
+    if cfg_dir.is_dir():
+        candidates += sorted(cfg_dir.glob("*resourcepacks*.toml"))
+    for cand in candidates:
         if cand.exists():
             order_cfg[cand.name] = cand.read_text(encoding="utf-8", errors="replace")[:400]
     rp_dir = root / "resourcepacks"

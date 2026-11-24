@@ -1,8 +1,8 @@
 """Аудит: какие символы в переводах не имеют глифа в ванильном шрифте 1.20.1.
 
 Проверяем все слои, которые видно игроку:
-  * ресурспак zz_linggango_ru.zip (lang-файлы);
-  * датапак zz_linggango_ru_books (страницы книг);
+  * ресурспак с переводом (lang-файлы);
+  * датапак с переведёнными книгами;
   * квесты FTB (расшифрованные .snbt);
   * скрипт-переводчик подсказок KubeJS.
 """
@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from lgq_crypt import decrypt, is_encrypted  # noqa: E402
-except ImportError:  # lgq_crypt живёт в reference/lingtango — для чужих сборок не нужен
+except ImportError:  # lgq_crypt живёт в reference/linggango — для чужих сборок не нужен
     decrypt = is_encrypted = None  # type: ignore
 
 # --- параметры запуска -------------------------------------------------
@@ -38,9 +38,20 @@ ROOT = Path(_args.root).expanduser().resolve()
 FONT_JSON = Path(_args.font_json).expanduser().resolve() if _args.font_json else \
     Path("/tmp/pngwork/mcfont/assets/minecraft/font/include/default.json")
 PACK_ZIP = Path(_args.pack).expanduser().resolve() if _args.pack else \
-    ROOT / "resourcepacks" / "zz_linggango_ru.zip"
+    _default_pack(ROOT)
 
 INVISIBLE = {"", "‌", "‍", "⁠"}
+
+
+def _default_pack(root: Path) -> Path:
+    """Ищет наш ресурспак в папке сборки: zz_*_ru.zip или *_ru.zip."""
+    rp = root / "resourcepacks"
+    if rp.is_dir():
+        for pat in ("zz_*_ru.zip", "*_ru.zip", "zz_*ru*.zip"):
+            found = sorted(rp.glob(pat))
+            if found:
+                return found[0]
+    return rp / "zz_ru.zip"
 
 
 def coverage() -> set[str]:

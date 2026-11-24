@@ -22,9 +22,9 @@ WORK = HERE / "work"
 KUBE = HERE.parent / "kubejs" / "client_scripts"
 
 HEADER = """// ===========================================================================
-// Русский перевод подсказок (тултипов) модов — модпак Linggango.
+// Русский перевод подсказок (тултипов) модов.
 //
-// СГЕНЕРИРОВАНО АВТОМАТИЧЕСКИ: .linggango-translate/build_tooltip_script.py
+// СГЕНЕРИРОВАНО АВТОМАТИЧЕСКИ: scripts/build_tooltip_script.py
 // Правь переводы в work/ui_strings_ru.json и work/pack_script_ru.json,
 // потом запусти build_tooltip_script.py заново.
 //

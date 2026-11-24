@@ -32,14 +32,14 @@ REPO = "твой-логин/имя-репозитория"
 
 # --- что копируем: (источник, путь внутри релиза) -----------------------
 FILES = [
-    # (ROOT / "resourcepacks/zz_linggango_ru.zip", "install/resourcepacks/zz_linggango_ru.zip"),
+    # (ROOT / "resourcepacks/<имя>_ru.zip", "install/resourcepacks/<имя>_ru.zip"),
     # (ROOT / "kubejs/client_scripts/ru_tooltip_translator.js",
     #  "install/kubejs/client_scripts/ru_tooltip_translator.js"),
-    # (ROOT / "mods/zz_linggango_ru_books.jar", "install/mods/zz_linggango_ru_books.jar"),
+    # (ROOT / "mods/<имя>_ru_books.jar", "install/mods/<имя>_ru_books.jar"),
 ]
 
 DIRS = [
-    # (ROOT / "datapacks/zz_linggango_ru_books", "install/datapacks/zz_linggango_ru_books"),
+    # (ROOT / "datapacks/<имя>_ru_books", "install/datapacks/<имя>_ru_books"),
     # (ROOT / "config/ftbquests/quests", "install/config/ftbquests/quests"),
 ]
 

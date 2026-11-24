@@ -200,7 +200,7 @@
 • теги: `<typewriter>`, `<grad from=#F0B23A to=#FFF0CC f=0.6>`, `<shadow a=0.4>`,
   `<click ...>`, `<rainbow>`
 • плейсхолдеры: `%s`, `%d`, `%1$s`, `%.2f`, `%dx%dx%d`, `{0}`, `{}`, `%1$s`
-• идентификаторы: `minecraft:stone`, `entity.player`, `linggango_tweaks:ring`
+• идентификаторы: `minecraft:stone`, `entity.player`, `modid:ring`
 • команды: `/give`, `/tp @s`, `/ftbquests`
 • URL, пути, имена файлов: `https://…`, `assets/…`, `foo.json`
 • макросы Patchouli: `$(l:ns:path)`, `$(item)`, `$(br)`, `$(crafting_table)`, `$(kbd)`

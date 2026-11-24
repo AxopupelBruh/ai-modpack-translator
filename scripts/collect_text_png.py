@@ -222,7 +222,7 @@ def main() -> int:
 <figcaption><b>{html.escape(Path(r['src']).stem)}</b><br><span class=p>{html.escape(r['path'])}</span><br><span class=t>{html.escape(r['text'][:160])}</span></figcaption>
 </figure>""")
     (OUT / "index.html").write_text(f"""<!doctype html><html lang="ru"><head><meta charset="utf-8">
-<title>PNG с английским текстом — Linggango</title>
+<title>PNG с английским текстом</title>
 <style>
 body{{background:#1b1b1f;color:#e8e8ea;font:14px/1.45 system-ui,sans-serif;margin:0;padding:24px}}
 h1{{font-size:20px;margin:0 0 6px}}

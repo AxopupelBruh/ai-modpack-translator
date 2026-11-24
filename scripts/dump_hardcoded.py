@@ -5,7 +5,7 @@
 группирует остаток по категориям и заодно проверяет, какие механизмы перевода
 в моде уже есть.
 
-    python3 dump_hardcoded.py mods/linggango_tweaks-7.47.jar
+    python3 dump_hardcoded.py mods/<мод>.jar
     python3 dump_hardcoded.py mods/*.jar -o report.md
     python3 dump_hardcoded.py mods/foo.jar --only-text
 
