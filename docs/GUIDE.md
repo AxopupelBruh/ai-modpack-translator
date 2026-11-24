@@ -59,6 +59,11 @@
    мод потеряет **все** свои русские переводы. То же с ванилой:
    `assets/minecraft/lang/ru_ru.json` должен содержать **все** ~8800 ключей, иначе весь
    ванильный интерфейс уйдёт в английский. **Клади в пак только ПОЛНЫЕ lang-файлы.**
+3a. **Полный lang-файл — это объединение ВСЕХ источников, а не только модов.**
+   Наш пак перекрывает lang-файлы всех, кто ниже: модов, пак KubeJS, пак `serilum`,
+   чужие локализации (`MPLOCmods`). Забытый ключ = английский в игре, хотя перевод
+   формально есть. Порядок сборки: `мод → KubeJS → serilum → чужие пакеты → наши правки`,
+   результат пишем в файл целиком.
 4. **Бренды и названия модов — латиницей** (Create, Mekanism, FTB, JEI, Ars Nouveau…).
    Маскировать перед переводом, восстанавливать после.
 5. **§-коды, `&`-коды, hex-цвета, теги, плейсхолдеры, ID, URL — не переводить.**
@@ -236,6 +241,29 @@ FTB Quests читает файлы (собрать книгу в игре). Ес
 `assets/<ns>/patchouli_books/<book>/ru_ru/...`. Макросы `$(l:ns:path)`, `$(item)`,
 `$(br)`, `$(crafting_table)` — **не переводить**, это ссылки.
 
+### 6.4.1. Подстановки внутри фраз — главный источник поломки
+> Найдено аудитом сборки Linggango 24.11.2026: из 92 442 ключей 65 имели нарушенные
+> подстановки. Правила перенесены в `prompts/SYSTEM_PROMPT_EN_RU.txt`, §6.1.
+
+Мод подставляет значения **по имени**, и это имя — не текст:
+
+| Что | Сломано | Как надо |
+|---|---|---|
+| `{name}` (имя игрока) | `{имя}` | `{name}` |
+| `{Mob Imprisonment Tool}` (название предмета) | `{Ловушка для мобов}` | по-английски |
+| `$(br)`, `$(clear)`, `$(l:…)`, `$(k:…)` | `$(бр)`, `$(очистить)` | имя макроса не трогать |
+| `${br}`, `%%n`, `@L@` | потеряны или переведены | вид и количество сохранить |
+| `{name:mechanical_saw,value>50}` | `value` → `значение` | ключи фильтра — синтаксис |
+| `{ text:"hello", value: 1 }` | переведён целиком | пример NBT не переводить |
+| `§920%` (код цвета + число) | `§9на 20%` | цифру не терять |
+
+Исключение: если в скобках обычная фраза-примечание (курсив Patchouli), а не
+идентификатор — переводи содержимое, но сохрани скобки.
+
+**Как ловить.** Маскировать фрагменты токенами `[[0]]` до перевода и возвращать после.
+Без маскировки — сверять после сборки множество подстановок с `en_us` мода: оно должно
+совпадать посимвольно. Скрипт: `reference/linggango/tools/audit_translation.py`.
+
 ### 6.5. Датапаки (книги в данжах)
 JSON-файлы с текстом + `pack.mcmeta`. Лут-таблицы тоже могут содержать текст —
 их нужно переводить, сохраняя структуру JSON. ⚠️ Датапак **заменяет** файл целиком:
@@ -392,53 +420,34 @@ lang-файлы и квесты, не зная формата конкретно
 форматы из §6, и проверять результат по критериям §10.
 
 В `scripts/` лежат переносимые куски, которые **работают как есть** или требуют
-только смены путей:
+только смены путей. Основные:
 
 | Скрипт | Для чего |
 |---|---|
 | `audit_pack.py` | **разведка одной командой**: версии, объём по слоям, что уже переведено, шифрование квестов, книги, порядок паков, риски |
 | `check_translation.py` | **валидатор перевода**: плейсхолдеры, `§`-коды, токены, пунктуация, регистр, непереведённое. `error` / `warn` / `info` |
 | `dump_hardcoded.py` | разбор мода на захардкоженный текст (constant pool + `javap` для подсчёта вызовов) |
-| `lang_json.py` | терпимое чтение lang-файлов (BOM, комментарии, висячие запятые) |
-| `snbt_text.py` | разбор и подстановка текстовых полей в SNBT квестов |
-| `brands.py` | маскирование и восстановление брендов (список — свой) |
-| `roles.py` | роль строки по ключу (название/тултип/кнопка/конфиг/квест) + дедупликация |
-| `translate_by_role.py` | перевод пачками по роли, с кэшем и дедупликацией до отправки |
-| `lint_calc.py` | линтер однозначных калек без модели — до аудита |
-| `back_translate.py` | обратный перевод RU→EN как фильтр смысловых ошибок в механике |
-| `glossary_quarantine.py` | карантин кандидатов в глоссарий, промоушен только вручную |
-| `collect_uncertain.py` | шутки и идиомы на ручную адаптацию, копилка примеров |
-| `deepl_backend.py` | бэкенд DeepL (ключ из `.deepl_keys` рядом со скриптом) |
-| `deepseek_backend.py` | бэкенд DeepSeek/OpenAI-совместимого API; правила читает из `prompts/SYSTEM_PROMPT_EN_RU.txt` |
+| `translate_by_role.py` | перевод пачками по роли строки, с кэшем и дедупликацией до отправки |
+| `deepl_backend.py` / `deepseek_backend.py` | бэкенды перевода |
 | `build_tooltip_script.py` | сборка KubeJS-переводчика подсказок |
-| `collect_text_png.py` | поиск PNG с английским текстом + галерея (`root out`) |
+| `collect_text_png.py` | поиск PNG с английским текстом + галерея |
 | `audit_font_coverage.py` | символы без глифа в шрифте игры |
+
+Полный список скриптов — в [`../README.md`](../README.md).
 
 В `reference/linggango/` — образец целого конвейера под конкретную сборку
 (сборка ресурспака, шифрование квестов, приёмка). **Перепиши под свою сборку**,
 не копируй как есть.
 
 В `prompts/` — промты под каждый режим работы:
+`SYSTEM_PROMPT_EN_RU.txt` (перевод строк; единственный источник правил, его читает
+`deepseek_backend.py`), `AUDIT_PROMPT.txt` (аудит готового перевода),
+`PROOFREAD_PROMPT.txt` (вычитка стиля), `RECON_PROMPT.txt` (разведка до перевода).
 
-| Файл | Когда |
-|---|---|
-| `SYSTEM_PROMPT_EN_RU.txt` | перевод строк; единственный источник правил, `deepseek_backend.py` читает его из файла |
-| `AUDIT_PROMPT.txt` | найти брак в готовом переводе (непереведённое, сломанная подстановка, калька, термины) |
-| `PROOFREAD_PROMPT.txt` | вычитка стиля: канцелярит, порядок слов, род, повторы |
-| `RECON_PROMPT.txt` | разведка сборки до начала перевода |
+Безопасные системные утилиты: `python3` + `Pillow` (PNG), `python3` + `fontTools`
+(charset шрифта), `tesseract` (OCR), ImageMagick (конвертация, контактные листы),
+`javap` / `unzip` (строки внутри `.class` и `.jar`), `requests` (API).
 
-Системные утилиты, которые безопасны:
-
-| Утилита | Для чего |
-|---|---|
-| `python3` + `Pillow` | чтение/запись PNG, измерение палитры, построение градиентов |
-| `python3` + `fontTools` | проверка charset шрифта (есть ли кириллица) |
-| `tesseract` | OCR: найти английский текст на картинках |
-| ImageMagick (`convert`, `montage`) | конвертация, контактные листы для ручного отбора |
-| `javap` / `unzip` | просмотр строк внутри `.class` и `.jar` |
-| `requests` | запросы к API переводчиков |
-
-Сканирование `.class` на строки:
 ```bash
 javap -c -p ModClass.class | grep -oE 'String [^ ]+'
 ```
@@ -478,52 +487,29 @@ grep -o '"file/[^"]*"' options.txt | tail -5
 # ванильный ru_ru (для своей версии)
 curl -sO https://resources.download.minecraft.net/v1_20_1/assets/minecraft/lang/ru_ru.json
 
-# поиск английских строк в class-файлах
-javap -c -p <Class>.class | grep -oE 'String [^ ]+'
-
 # захардкоженный текст: разбор мода и оценка объёма
 python3 scripts/dump_hardcoded.py mods/<мод>.jar -o HARDCODED.md
 
-# OCR по PNG
-tesseract file.png stdout -l eng --psm 11
-
-# поиск картинок с текстом по всей сборке
+# картинки и шрифт
 python3 scripts/collect_text_png.py <инстанс> ./png-scan
-
-# символы без глифа в шрифте
+tesseract file.png stdout -l eng --psm 11
 python3 scripts/audit_font_coverage.py <инстанс> --font-json <путь к include/default.json>
 
-# проверка перевода до сборки
+# перевод и проверка
+python3 scripts/translate_by_role.py work/pairs.json -o work/mods_ru.json
+python3 scripts/lint_calc.py work/mods_ru.json --fix              # кальки
+python3 scripts/back_translate.py work/pairs.json                 # механика
 python3 scripts/check_translation.py work/mods_ru.json            # блокеры
 python3 scripts/check_translation.py work/mods_ru.json --all      # + стилистика
-python3 scripts/check_translation.py pack.zip --mods mods/        # по готовому паку
 
-# перевод пачками по роли строки (с дедупликацией и кэшем)
-python3 scripts/translate_by_role.py work/pairs.json -o work/mods_ru.json
-python3 scripts/translate_by_role.py work/pairs.json --dry-run    # только раскладка по ролям
-
-# дешёвые фильтры до аудита
-python3 scripts/lint_calc.py work/mods_ru.json                    # отчёт по калькам
-python3 scripts/lint_calc.py work/mods_ru.json --fix              # починить на месте
-python3 scripts/back_translate.py work/pairs.json                 # механика → work/mismatch.json
-
-# глоссарий: карантин, проверка, ручной промоушен
-python3 scripts/glossary_quarantine.py add work/batch.json
-python3 scripts/glossary_quarantine.py list
-python3 scripts/glossary_quarantine.py check "Soul Forge" > work/cand.json   # → AUDIT_PROMPT
+# глоссарий и сомнительные строки
+python3 scripts/glossary_quarantine.py check "Soul Forge" > work/cand.json
 python3 scripts/glossary_quarantine.py promote "Soul Forge" --by <кто>
-
-# шутки и идиомы на ручную адаптацию
-python3 scripts/collect_uncertain.py add work/batch.json
-python3 scripts/collect_uncertain.py list
 python3 scripts/collect_uncertain.py accept 0 --ru "свой вариант" --note "почему"
-python3 scripts/collect_uncertain.py export work/adaptation_ru.json
 
-# сборка и проверка ресурспака
+# сборка и проверка
 python3 build_resourcepack.py
 python3 verify_all.py
-
-# проверка целостности zip
 python3 -c "import zipfile; print(zipfile.ZipFile('pack.zip').testzip())"
 ```
 
@@ -532,19 +518,17 @@ python3 -c "import zipfile; print(zipfile.ZipFile('pack.zip').testzip())"
 ## 12. ПОРЯДОК ДЕЙСТВИЙ АГЕНТА (резюме)
 
 1. Прочитать этот гайд целиком.
-2. **Спросить пользователя**: движок, объём (остатки или с нуля), трогать ли картинки.
+2. **Спросить пользователя:** движок, объём (остатки или с нуля), трогать ли картинки.
 3. Разведка сборки (§3) → показать пользователю факты.
 4. Поставить существующие пакеты локализации; наш — последним.
 5. Запустить игру, снять остатки (§5.1) — **после** установки паков.
-6. Классифицировать: что переводим, что нет.
-7. Перевести остатки пачками: маскирование → термины → группировка по роли →
+6. Перевести остатки пачками: маскирование → термины → группировка по роли →
    дедупликация → движок → линтер калек → обратный перевод → валидация.
-8. Прогнать `check_translation.py`: блокеры починить, предупреждения просмотреть.
-9. Собрать ресурспак/датапак/скрипт, проверить по §10, отдать результат.
+7. Собрать ресурспак/датапак/скрипт, проверить по §10, отдать результат.
 
 **В финальном отчёте пользователю всегда отдельной строкой указывай моды
 с захардкоженным текстом** (см. `HARDCODED.md`), даже если это один мод из
-сорока. Формулировка:
+сорока:
 
 ```
 Перевод завершён, НО: мод <имя> содержит захардкоженный текст
